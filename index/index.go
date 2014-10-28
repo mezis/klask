@@ -2,8 +2,9 @@ package index
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/juju/errgo"
 )
 
 type Index interface {
@@ -13,6 +14,10 @@ type Index interface {
 	// Return the index name
 	Name() string
 
+	// A fresh connection from the underlying pool
+	// to be closed after usage
+	Conn() redis.Conn
+
 	// Checks the database for index existence
 	Exists() (bool, error)
 
@@ -20,9 +25,14 @@ type Index interface {
 	// Errors if the persisted version cannot be read, is inconsistent, or does not
 	// exist.
 	Load() error
+
+	// Also save fields
 	Save() error
 	Destroy() error
 	Fields() Fieldset
+
+	// The Redis key where the list of fields is stored
+	FieldsKey() string
 }
 
 type index_t struct {
@@ -41,8 +51,16 @@ func New(name string, pool *redis.Pool) (Index, error) {
 	return self, nil
 }
 
+func (self *index_t) Conn() redis.Conn {
+	return self.pool.Get()
+}
+
 func (self *index_t) Name() string {
 	return self.name
+}
+
+func (self *index_t) FieldsKey() string {
+	return fmt.Sprintf("fields:%s", self.Name())
 }
 
 func (self *index_t) Exists() (bool, error) {
@@ -51,14 +69,35 @@ func (self *index_t) Exists() (bool, error) {
 
 	res, err := redis.Bool(conn.Do("SISMEMBER", "indices", self.name))
 	if err != nil {
-		return false, err
+		return false, errgo.Mask(err)
 	}
 
 	return res, nil
 }
 
 func (self *index_t) Load() error {
-	return errors.New("not implemented")
+	exists, err := self.Exists()
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	if !exists {
+		return errgo.Newf("index '%s' does not exist", self.name)
+	}
+
+	conn := self.pool.Get()
+	defer conn.Close()
+
+	val, err := redis.Strings(conn.Do("HGETALL", self.FieldsKey()))
+	if err != nil {
+		return errgo.Mask(err)
+	}
+
+	self.fields = make(Fieldset)
+	for k := 0; k < len(val); k += 2 {
+		self.AddField(val[k], FieldType(val[k+1]))
+	}
+
+	return nil
 }
 
 // TODO: make this transactional, using version numbers/UUID and
@@ -67,18 +106,35 @@ func (self *index_t) Save() error {
 	conn := self.pool.Get()
 	defer conn.Close()
 
-	_, err := redis.Int(conn.Do("SADD", "indices", self.name))
+	_, err := conn.Do("SADD", "indices", self.name)
 	if err != nil {
-		return err
+		return errgo.Mask(err)
+	}
+
+	for _, field := range self.Fields() {
+		fmt.Println("saving field", field.Name())
+		err := field.Save()
+		if err != nil {
+			return errgo.Mask(err)
+		}
 	}
 
 	return nil
 }
 
 func (self *index_t) Destroy() error {
-	return errors.New("not implemented")
+	return errgo.New("index_t#Destroy not implemented")
 }
 
 func (self *index_t) Fields() Fieldset {
 	return self.fields
+}
+
+func (self *index_t) AddField(name string, ty FieldType) error {
+	field, err := newField(self, name, ty)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	self.Fields()[name] = field
+	return nil
 }

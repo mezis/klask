@@ -1,8 +1,6 @@
 package actions
 
 import (
-	// "encoding/json"
-	// "github.com/gorilla/mux"
 	"github.com/mezis/klask/config"
 	"github.com/mezis/klask/index"
 	"net/http"
@@ -25,5 +23,6 @@ func OnIndicesCreate(res http.ResponseWriter, req *http.Request) {
 	err = resource.Save()
 	abortOn(err)
 
+	res.WriteHeader(201)
 	respondJson(res, resource)
 }

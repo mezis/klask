@@ -20,8 +20,8 @@ func OnIndicesShow(res http.ResponseWriter, req *http.Request) {
 		fail(404, "does not exist")
 	}
 
-	// TODO:
-	// resource.Load()
+	err = resource.Load()
+	abortOn(err)
 
 	respondJson(res, resource)
 }

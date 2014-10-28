@@ -11,7 +11,7 @@ const (
 )
 
 func main() {
-	middleware := negroni.Classic()
+	middleware := negroni.New(newRecovery(), negroni.NewLogger())
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", actions.OnRootGet).Methods("GET")
