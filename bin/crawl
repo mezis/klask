@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'bundler/setup'
+
+require 'mechanize'
+require 'nokogiri'
+require 'pry'
+
+DOMAIN = "en.wikipedia.org"
+START_URL = "http://#{DOMAIN}/wiki/Computer_science"
+
+class Scraper
+  def initialize
+    @agent = Mechanize.new do |agent|
+      agent.follow_meta_refresh = true
+    end
+  end
+
+  def process(url)
+    @agent.get(url) do |page|
+      binding.pry
+    end
+  end
+end
+
+
+# def process_page(path)
+#   Wombat.crawl do
+#     base_url 'http://en.wikipedia.org'
+#     path     path
+
+#     heading  'css=.firstHeading'
+#     body_content 'css=#bodyContent' do |e|
+#       binding.pry
+#     end
+
+#     contents 'css=.mw-headline', :iterator do |e|
+#       binding.pry
+#       e
+#     end
+#   end
+# end
+
+$scraper = Scraper.new
+$scraper.process(START_URL)

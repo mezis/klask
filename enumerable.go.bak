@@ -1,0 +1,74 @@
+package enumerable
+
+import "container/list"
+
+type Item interface{}
+
+type Callback func(Item) error
+
+type Iterator func(Callback) error
+
+type Enumerable interface {
+	Each(*Callback) error
+	Count() (int, error)
+}
+
+type enumerable struct {
+	iterator Iterator
+}
+
+func (self *enumerable) Each(cb Callback) error {
+	err := self.iterator(func(item Item) error {
+		return cb(item)
+	})
+	return err
+}
+
+func (self *enumerable) Count() (int, error) {
+	result := 0
+	self.Each(func(_ Item) error {
+		result++
+		return nil
+	})
+	return result, nil
+}
+
+type enumlist struct {
+	enumerable
+	list.List
+}
+
+func listIterator(list *enumlist) Iterator {
+	return func(cb Callback) error {
+		front := &list.Front().Value
+		err := cb(front)
+		return err
+	}
+}
+
+func List() *enumlist {
+	result := new(enumlist)
+	result.iterator = listIterator(result)
+	result.Init()
+	return result
+}
+
+type enumMap struct {
+	enumerable
+	data map[string]Item
+}
+
+func mapIterator(m *enumMap) Iterator {
+	return func(cb Callback) error {
+		for _, v := range m.data {
+			cb(v)
+		}
+		return nil
+	}
+}
+
+func Map() *enumMap {
+	result := new(enumMap)
+	result.iterator = mapIterator(result)
+	return result
+}
