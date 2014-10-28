@@ -22,14 +22,13 @@ func abortOn(err error) {
 
 func failMessage(res http.ResponseWriter) {
 	if err := recover(); err != nil {
-		switch err.(type) {
+		switch e := err.(type) {
 		case httpError:
-			err := err.(httpError)
 			res.Header().Add("Content-Type", "text/plain")
-			res.WriteHeader(err.status)
-			res.Write([]byte(err.message))
+			res.WriteHeader(e.status)
+			res.Write([]byte(e.message))
 		default:
-			panic(err)
+			panic(e)
 		}
 	}
 }
