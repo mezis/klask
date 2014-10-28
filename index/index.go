@@ -36,23 +36,23 @@ type Index interface {
 }
 
 type index_t struct {
-	conn   redis.Conn
-	name   string   // the index name, used as a prefix in Redis
-	dirty  bool     // whether changes were made that need to be persisted
-	fields Fieldset // maps field names to how they should be indexed
+	pool   *redis.Pool // the pool of Redis connections to use
+	name   string      // the index name, used as a prefix in Redis
+	dirty  bool        // whether changes were made that need to be persisted
+	fields Fieldset    // maps field names to how they should be indexed
 }
 
-func New(name string, conn redis.Conn) (Index, error) {
+func New(name string, pool *redis.Pool) (Index, error) {
 	self := new(index_t)
 	// TODO: validate name
-	self.conn = conn
+	self.pool = pool
 	self.name = name
 	self.fields = make(Fieldset)
 	return self, nil
 }
 
 func (self *index_t) Conn() redis.Conn {
-	return self.conn
+	return self.pool.Get()
 }
 
 func (self *index_t) Name() string {
@@ -64,7 +64,10 @@ func (self *index_t) FieldsKey() string {
 }
 
 func (self *index_t) Exists() (bool, error) {
-	res, err := redis.Bool(self.conn.Do("SISMEMBER", "indices", self.name))
+	conn := self.pool.Get()
+	defer conn.Close()
+
+	res, err := redis.Bool(conn.Do("SISMEMBER", "indices", self.name))
 	if err != nil {
 		return false, errgo.Mask(err)
 	}
@@ -81,7 +84,10 @@ func (self *index_t) Load() error {
 		return errgo.Newf("index '%s' does not exist", self.name)
 	}
 
-	val, err := redis.Strings(self.conn.Do("HGETALL", self.FieldsKey()))
+	conn := self.pool.Get()
+	defer conn.Close()
+
+	val, err := redis.Strings(conn.Do("HGETALL", self.FieldsKey()))
 	if err != nil {
 		return errgo.Mask(err)
 	}
@@ -97,7 +103,10 @@ func (self *index_t) Load() error {
 // TODO: make this transactional, using version numbers/UUID and
 // a LUA script
 func (self *index_t) Save() error {
-	_, err := self.conn.Do("SADD", "indices", self.name)
+	conn := self.pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("SADD", "indices", self.name)
 	if err != nil {
 		return errgo.Mask(err)
 	}

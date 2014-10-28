@@ -8,12 +8,10 @@ import (
 )
 
 func OnIndicesShow(res http.ResponseWriter, req *http.Request) {
-	conn := config.Pool().Get()
-	defer conn.Close()
 	defer failMessage(res)
 
 	params := mux.Vars(req)
-	resource, err := index.New(params["name"], conn)
+	resource, err := index.New(params["name"], config.Pool())
 	abortOn(err)
 
 	exists, err := resource.Exists()

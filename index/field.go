@@ -34,6 +34,8 @@ func (self *field_t) Type() FieldType {
 
 func (self *field_t) saveCommon() error {
 	conn := self.idx.Conn()
+	defer conn.Close()
+
 	key := self.idx.FieldsKey()
 
 	// TODO: this needs to be transactional
@@ -56,6 +58,8 @@ func (self *field_t) saveCommon() error {
 
 func (self *field_t) keyType(key string) (string, error) {
 	conn := self.idx.Conn()
+	defer conn.Close()
+
 	val, err := redis.String(conn.Do("TYPE", key))
 	if err != nil {
 		return "", errgo.Mask(err)

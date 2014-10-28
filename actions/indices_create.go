@@ -7,11 +7,9 @@ import (
 )
 
 func OnIndicesCreate(res http.ResponseWriter, req *http.Request) {
-	conn := config.Pool().Get()
-	defer conn.Close()
 	defer failMessage(res)
 
-	resource, err := index.New("unnamed", conn)
+	resource, err := index.New("unnamed", config.Pool())
 	abortOn(err)
 
 	requestJson(req, &resource)
