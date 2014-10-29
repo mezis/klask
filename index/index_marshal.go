@@ -41,7 +41,7 @@ func (self *index_t) UnmarshalJSON(data []byte) error {
 
 	self.name = presenter.ID
 	for _, val := range presenter.Fields {
-		err := self.AddField(val.Name, val.Type)
+		err := self.addField(val.Name, val.Type)
 		if err != nil {
 			return err
 		}

@@ -28,8 +28,12 @@ type Index interface {
 
 	// Also save fields
 	Save() error
+
 	Destroy() error
+
 	Fields() Fieldset
+
+	Field(string) (Field, error)
 
 	// The Redis key where the list of fields is stored
 	FieldsKey() string
@@ -134,7 +138,7 @@ func (self *index_t) Load() error {
 
 	self.fields = make(Fieldset)
 	for k := 0; k < len(val); k += 2 {
-		self.AddField(val[k], FieldType(val[k+1]))
+		self.addField(val[k], FieldType(val[k+1]))
 	}
 
 	return nil
@@ -170,11 +174,19 @@ func (self *index_t) Fields() Fieldset {
 	return self.fields
 }
 
-func (self *index_t) AddField(name string, ty FieldType) error {
+func (self *index_t) Field(name string) (Field, error) {
+	field, ok := self.fields[name]
+	if !ok {
+		return nil, errgo.Newf("no field named '%s' in index '%s'", name, self.name)
+	}
+	return field, nil
+}
+
+func (self *index_t) addField(name string, ty FieldType) error {
 	field, err := newField(self, name, ty)
 	if err != nil {
 		return errgo.Mask(err)
 	}
-	self.Fields()[name] = field
+	self.fields[name] = field
 	return nil
 }

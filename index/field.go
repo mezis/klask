@@ -71,10 +71,20 @@ func (self *field_t) DataKey() string {
 	return fmt.Sprintf("data:%s:%s", self.idx.Name(), self.Name())
 }
 
+func initField(self *field_t, idx Index, name string, ty FieldType) {
+	self.idx = idx
+	self.name = name
+	self.ty = ty
+}
+
+func (self *field_t) init(idx Index, name string, ty FieldType) {
+	self.idx = idx
+	self.name = name
+	self.ty = ty
+}
+
 // Factory for fields of different types and indexing methods
 func newField(idx Index, name string, ty FieldType) (Field, error) {
-	var err error = nil
-	var result Field = nil
 
 	// TODO: validate name
 
@@ -83,11 +93,14 @@ func newField(idx Index, name string, ty FieldType) (Field, error) {
 	}
 	switch ty {
 	case FIntEq:
-		result = &field_int_eq_t{field_t{idx, name, ty}}
+		field := new(field_int_eq_t)
+		(&field.field_t).init(idx, name, ty)
+		return field, nil
 	case FIntNeq:
-		result = &field_int_neq_t{field_t{idx, name, ty}}
+		field := new(field_int_neq_t)
+		(&field.field_t).init(idx, name, ty)
+		return field, nil
 	default:
-		err = errgo.Newf("unsupported field type '%s'", ty)
+		return nil, errgo.Newf("unsupported field type '%s'", ty)
 	}
-	return result, err
 }
