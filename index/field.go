@@ -16,6 +16,9 @@ type Field interface {
 
 	// Destroy persisted field
 	// Destroy() error
+
+	// Return nil if this value is valid for this field type
+	CheckValidValue(interface{}) error
 }
 
 type field_t struct {

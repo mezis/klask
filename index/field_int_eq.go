@@ -5,6 +5,7 @@ import (
 )
 
 type field_int_eq_t struct {
+	field_with_int_value_t
 	field_t
 }
 
