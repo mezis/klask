@@ -17,11 +17,11 @@ func OnIndicesShow(res http.ResponseWriter, req *http.Request) {
 	exists, err := resource.Exists()
 	abortOn(err)
 	if !exists {
-		fail(404, "does not exist")
+		fail(http.StatusNotFound, "does not exist")
 	}
 
 	err = resource.Load()
 	abortOn(err)
 
-	respondJson(res, resource)
+	respondJson(res, http.StatusOK, resource)
 }

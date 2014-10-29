@@ -17,12 +17,11 @@ func OnIndicesCreate(res http.ResponseWriter, req *http.Request) {
 	exists, err := resource.Exists()
 	abortOn(err)
 	if exists {
-		fail(409, "already exists")
+		fail(http.StatusConflict, "already exists")
 	}
 
 	err = resource.Save()
 	abortOn(err)
 
-	res.WriteHeader(201)
-	respondJson(res, resource)
+	respondJson(res, http.StatusCreated, resource)
 }

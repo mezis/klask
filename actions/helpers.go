@@ -46,8 +46,9 @@ func requestJson(req *http.Request, resource interface{}) {
 	}
 }
 
-func respondJson(res http.ResponseWriter, resource interface{}) {
+func respondJson(res http.ResponseWriter, status int, resource interface{}) {
 	res.Header().Add("Content-Type", "application/json")
+	res.WriteHeader(status)
 	encoder := json.NewEncoder(res)
 	err := encoder.Encode(resource)
 	if err != nil {

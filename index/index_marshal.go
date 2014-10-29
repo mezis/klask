@@ -2,50 +2,45 @@ package index
 
 import (
 	"encoding/json"
-	// "fmt"
 )
 
-type field_marshal_t struct {
+type index_presenter_t struct {
+	ID     string              `json:"id"`
+	Fields []field_presenter_t `json:"fields"`
+}
+
+type field_presenter_t struct {
 	Name string    `json:"name"`
 	Type FieldType `json:"type"`
 }
 
-type index_marshal_t struct {
-	ID     string            `json:"id"`
-	Fields []field_marshal_t `json:"fields"`
-}
-
 // Satisfiy the json.Marhshaler interface
 func (self *index_t) MarshalJSON() ([]byte, error) {
-	var record index_marshal_t
+	var presenter index_presenter_t
 
-	// fmt.Println("converting index to JSON")
-	record.ID = self.name
-	record.Fields = make([]field_marshal_t, len(self.fields))
+	presenter.ID = self.name
+	presenter.Fields = make([]field_presenter_t, len(self.fields))
 	k := 0
 	for _, field := range self.fields {
-		// fmt.Println("  field: ", field.Name(), field.Type())
-		record.Fields[k] = field_marshal_t{field.Name(), field.Type()}
+		presenter.Fields[k].Name = field.Name()
+		presenter.Fields[k].Type = field.Type()
 		k++
 	}
 
-	// data, err := json.MarshalIndent(record, "", "  ")
-	// fmt.Println(string(data))
-	data, err := json.Marshal(record)
+	data, err := json.Marshal(presenter)
 	return data, err
 }
 
 func (self *index_t) UnmarshalJSON(data []byte) error {
-	var record index_marshal_t
+	var presenter index_presenter_t
 
-	// fmt.Println("parsing index: ", string(data))
-	err := json.Unmarshal(data, &record)
+	err := json.Unmarshal(data, &presenter)
 	if err != nil {
 		return err
 	}
 
-	self.name = record.ID
-	for _, val := range record.Fields {
+	self.name = presenter.ID
+	for _, val := range presenter.Fields {
 		err := self.AddField(val.Name, val.Type)
 		if err != nil {
 			return err
