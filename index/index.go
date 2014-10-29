@@ -35,13 +35,7 @@ type Index interface {
 	FieldsKey() string
 }
 
-type index_t struct {
-	pool   *redis.Pool // the pool of Redis connections to use
-	name   string      // the index name, used as a prefix in Redis
-	dirty  bool        // whether changes were made that need to be persisted
-	fields Fieldset    // maps field names to how they should be indexed
-}
-
+// Allocate and initialize an Index
 func New(name string, pool *redis.Pool) (Index, error) {
 	self := new(index_t)
 	// TODO: validate name
@@ -50,6 +44,52 @@ func New(name string, pool *redis.Pool) (Index, error) {
 	self.fields = make(Fieldset)
 	return self, nil
 }
+
+// Wrap in an Enumerable interface?
+// index.Iter(pool).Each()
+
+func Each(pool *redis.Pool) <-chan interface{} {
+	ch := make(chan interface{})
+	go func() {
+		conn := pool.Get()
+		defer conn.Close()
+
+		names, err := redis.Strings(conn.Do("SMEMBERS", cIndicesKey))
+		if err != nil {
+			ch <- errgo.Mask(err)
+			return
+		}
+		for _, name := range names {
+			fmt.Println(name)
+			idx, err := New(name, pool)
+			if err != nil {
+				ch <- errgo.Mask(err)
+				return
+			}
+			err = idx.Load()
+			if err != nil {
+				ch <- errgo.Mask(err)
+				return
+			}
+			ch <- idx
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type index_t struct {
+	pool   *redis.Pool // the pool of Redis connections to use
+	name   string      // the index name, used as a prefix in Redis
+	dirty  bool        // whether changes were made that need to be persisted
+	fields Fieldset    // maps field names to how they should be indexed
+}
+
+const (
+	cIndicesKey = "indices"
+)
 
 func (self *index_t) Conn() redis.Conn {
 	return self.pool.Get()
@@ -67,7 +107,7 @@ func (self *index_t) Exists() (bool, error) {
 	conn := self.pool.Get()
 	defer conn.Close()
 
-	res, err := redis.Bool(conn.Do("SISMEMBER", "indices", self.name))
+	res, err := redis.Bool(conn.Do("SISMEMBER", cIndicesKey, self.name))
 	if err != nil {
 		return false, errgo.Mask(err)
 	}

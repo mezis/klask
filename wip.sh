@@ -1,4 +1,6 @@
-echo flushdb | redis-cli -n 2
+flush() {
+  echo flushdb | redis-cli -n 2
+}
 
 curl -XGET -D/dev/stderr http://localhost:3000/indices/test
 
@@ -13,4 +15,6 @@ validJson='{
   }]
 }'
 
-curl -XPOST -d"$validJson" -H 'Content-Type: application/json' -D/dev/stderr http://localhost:3000/indices
+flush ; curl -XPOST -d"$validJson" -H 'Content-Type: application/json' -D/dev/stderr http://localhost:3000/indices
+
+curl -XGET -D/dev/stderr http://localhost:3000/indices
