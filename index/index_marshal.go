@@ -2,6 +2,7 @@ package index
 
 import (
 	"encoding/json"
+	"github.com/juju/errgo"
 )
 
 type index_presenter_t struct {
@@ -28,7 +29,10 @@ func (self *index_t) MarshalJSON() ([]byte, error) {
 	}
 
 	data, err := json.Marshal(presenter)
-	return data, err
+	if err != nil {
+		return nil, errgo.Mask(err)
+	}
+	return data, nil
 }
 
 func (self *index_t) UnmarshalJSON(data []byte) error {
@@ -36,14 +40,14 @@ func (self *index_t) UnmarshalJSON(data []byte) error {
 
 	err := json.Unmarshal(data, &presenter)
 	if err != nil {
-		return err
+		return errgo.Mask(err)
 	}
 
 	self.name = presenter.ID
 	for _, val := range presenter.Fields {
 		err := self.addField(val.Name, val.Type)
 		if err != nil {
-			return err
+			return errgo.Mask(err)
 		}
 	}
 
