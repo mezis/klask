@@ -7,6 +7,8 @@ import (
 )
 
 func OnIndicesIndex(res http.ResponseWriter, req *http.Request) {
+	defer failMessage(res)
+
 	indices := make([]index.Index, 0)
 	for x := range index.Each(config.Pool()) {
 		switch val := x.(type) {
