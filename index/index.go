@@ -34,6 +34,12 @@ type Index interface {
 	Fields() Fieldset
 
 	Field(string) (Field, error)
+
+	// Return a new, unsaved record
+	New() Record
+
+	// Find a saved record by identifier
+	Find(id Id) (Record, error)
 }
 
 // Allocate and initialize an Index
