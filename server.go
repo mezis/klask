@@ -4,6 +4,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/mezis/klask/actions"
+	"github.com/mezis/klask/middleware"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 )
 
 func main() {
-	middleware := negroni.New(newRecovery(), negroni.NewLogger())
+	stack := negroni.New(middleware.NewRecovery(), negroni.NewLogger())
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", actions.OnRootGet).Methods("GET")
@@ -19,6 +20,6 @@ func main() {
 	router.HandleFunc("/indices", actions.OnIndicesCreate).Methods("POST")
 	router.HandleFunc("/indices/{name}", actions.OnIndicesShow).Methods("GET")
 
-	middleware.UseHandler(router)
-	middleware.Run(serveAddress)
+	stack.UseHandler(router)
+	stack.Run(serveAddress)
 }
