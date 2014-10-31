@@ -9,7 +9,10 @@ import (
 type Field interface {
 	Name() string
 	Type() FieldType
-	Save() error
+
+	// Verify whether the persisted keys matchs the expected type for this field.
+	// Return nil if everything is sound.
+	Check() error
 
 	// Redis key holding the field data
 	DataKey() string
@@ -33,30 +36,6 @@ func (self *field_t) Name() string {
 
 func (self *field_t) Type() FieldType {
 	return self.ty
-}
-
-func (self *field_t) saveCommon() error {
-	conn := self.idx.Conn()
-	defer conn.Close()
-
-	key := self.idx.FieldsKey()
-
-	// TODO: this needs to be transactional
-	val, err := conn.Do("HGET", key, self.name)
-	if err != nil {
-		return errgo.Mask(err)
-	}
-	if val != nil {
-		if val, _ := redis.String(val, err); val != string(self.ty) {
-			return errgo.Newf("field '%s' already has type '%s'", self.name, val)
-		}
-	}
-
-	_, err = conn.Do("HSET", key, self.name, self.ty)
-	if err != nil {
-		return errgo.Mask(err)
-	}
-	return nil
 }
 
 func (self *field_t) keyType(key string) (string, error) {

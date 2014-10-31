@@ -34,9 +34,6 @@ type Index interface {
 	Fields() Fieldset
 
 	Field(string) (Field, error)
-
-	// The Redis key where the list of fields is stored
-	FieldsKey() string
 }
 
 // Allocate and initialize an Index
@@ -103,10 +100,6 @@ func (self *index_t) Name() string {
 	return self.name
 }
 
-func (self *index_t) FieldsKey() string {
-	return fmt.Sprintf("fields:%s", self.Name())
-}
-
 func (self *index_t) Exists() (bool, error) {
 	conn := self.pool.Get()
 	defer conn.Close()
@@ -131,7 +124,7 @@ func (self *index_t) Load() error {
 	conn := self.pool.Get()
 	defer conn.Close()
 
-	val, err := redis.Strings(conn.Do("HGETALL", self.FieldsKey()))
+	val, err := redis.Strings(conn.Do("HGETALL", self.fieldsKey()))
 	if err != nil {
 		return errgo.Mask(err)
 	}
@@ -147,17 +140,24 @@ func (self *index_t) Load() error {
 // TODO: make this transactional, using version numbers/UUID and
 // a LUA script
 func (self *index_t) Save() error {
+	var err error = nil
+
 	conn := self.pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("SADD", "indices", self.name)
+	_, err = conn.Do("SADD", "indices", self.name)
 	if err != nil {
 		return errgo.Mask(err)
 	}
 
 	for _, field := range self.Fields() {
 		fmt.Println("saving field", field.Name())
-		err := field.Save()
+		err = field.Check()
+		if err != nil {
+			return errgo.Mask(err)
+		}
+
+		err = self.saveField(field)
 		if err != nil {
 			return errgo.Mask(err)
 		}
@@ -189,4 +189,32 @@ func (self *index_t) addField(name string, ty FieldType) error {
 	}
 	self.fields[name] = field
 	return nil
+}
+
+func (self *index_t) saveField(field Field) error {
+	conn := self.Conn()
+	defer conn.Close()
+
+	key := self.fieldsKey()
+
+	// TODO: this needs to be transactional
+	val, err := conn.Do("HGET", key, self.name)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	if val != nil {
+		if val, _ := redis.String(val, err); val != string(field.Type()) {
+			return errgo.Newf("field '%s' already has type '%s'", field.Name(), val)
+		}
+	}
+
+	_, err = conn.Do("HSET", key, field.Name(), field.Type())
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+func (self *index_t) fieldsKey() string {
+	return fmt.Sprintf("fields:%s", self.Name())
 }

@@ -9,11 +9,7 @@ type field_int_eq_t struct {
 	field_t
 }
 
-func (self *field_int_eq_t) Save() error {
-	if err := self.saveCommon(); err != nil {
-		return errgo.Mask(err)
-	}
-
+func (self *field_int_eq_t) Check() error {
 	key := self.DataKey()
 	keyType, err := self.keyType(key)
 	if err != nil {
