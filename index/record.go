@@ -1,12 +1,16 @@
 package index
 
 import (
+	"encoding/json"
 	"github.com/juju/errgo"
 )
 
 type Id int64
 
 type Record interface {
+	json.Marshaler
+	json.Unmarshaler
+
 	// Unique record id; negative if unsaved
 	Id() Id
 
