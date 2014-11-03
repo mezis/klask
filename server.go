@@ -16,9 +16,14 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", actions.OnRootGet).Methods("GET")
+
 	router.HandleFunc("/indices", actions.OnIndicesIndex).Methods("GET")
 	router.HandleFunc("/indices", actions.OnIndicesCreate).Methods("POST")
 	router.HandleFunc("/indices/{name}", actions.OnIndicesShow).Methods("GET")
+
+	// router.HandleFunc("/indices/{name}/records", actions.OnRecordsIndex).Methods("GET")
+	router.HandleFunc("/indices/{name}/records", actions.OnRecordsCreate).Methods("POST")
+	router.HandleFunc("/indices/{name}/records/{id}", actions.OnRecordsDelete).Methods("DELETE")
 
 	stack.UseHandler(router)
 	stack.Run(serveAddress)

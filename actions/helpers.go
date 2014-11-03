@@ -2,6 +2,7 @@ package actions
 
 import (
 	"encoding/json"
+	"github.com/juju/errgo"
 	"net/http"
 )
 
@@ -36,12 +37,13 @@ func failMessage(res http.ResponseWriter) {
 func requestJson(req *http.Request, resource interface{}) {
 	mime := req.Header.Get("Content-Type")
 	if mime != "application/json" {
-		fail(400, "bad content type")
+		fail(http.StatusBadRequest, "bad content type")
 	}
 
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(resource)
 	if err != nil {
+		err = errgo.Mask(err)
 		panic(err)
 	}
 }
@@ -52,6 +54,7 @@ func respondJson(res http.ResponseWriter, status int, resource interface{}) {
 	encoder := json.NewEncoder(res)
 	err := encoder.Encode(resource)
 	if err != nil {
+		err = errgo.Mask(err)
 		panic(err)
 	}
 }

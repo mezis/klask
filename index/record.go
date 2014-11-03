@@ -27,8 +27,17 @@ type Record interface {
 	// Checks whether all fields have the correct type of value
 	IsValid() bool
 
+	// Persists the record.
 	Persist() error
+
+	// Destroys this record. Erros if the records wasn't saved beforehand.
+	Destroy() error
 }
+
+var (
+	ErrorNotFound = errgo.New("record not found")
+	ErrorUnsaved  = errgo.New("record not saved")
+)
 
 type attrs_t map[string]interface{}
 
@@ -50,10 +59,6 @@ func (self *index_t) New() Record {
 	return record
 }
 
-func (self *index_t) Find(id Id) (Record, error) {
-	return nil, errgo.New("not implemented")
-}
-
 func (self *record_t) Id() Id {
 	return self.id
 }
@@ -71,11 +76,12 @@ func (self *record_t) Set(key string, value interface{}) error {
 	if !ok {
 		return errgo.Newf("no such field '%s'", key)
 	}
-	if err := field.CheckValidValue(value); err != nil {
+	if value, err := field.CheckValidValue(value); err != nil {
 		return errgo.Mask(err)
+	} else {
+		self.attrs[key] = value
+		return nil
 	}
-	self.attrs[key] = value
-	return nil
 }
 
 func (self *record_t) Index() Index {
@@ -83,9 +89,36 @@ func (self *record_t) Index() Index {
 }
 
 func (self *record_t) IsValid() bool {
+	panic("not implemented")
 	return false
 }
 
+func (self *record_t) Exists() (bool, error) {
+	return false, errgo.New("not implemented")
+}
+
 func (self *record_t) Persist() error {
-	return errgo.New("not implemented")
+	for name, field := range self.idx.Fields() {
+		value, ok := self.attrs[name]
+		if !ok {
+			continue
+		}
+		field.Add(self.id, value)
+	}
+	err := self.idx.Persist(self)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+func (self *record_t) Destroy() error {
+	if self.id < 0 {
+		return errgo.Mask(ErrorUnsaved)
+	}
+	err := self.idx.Del(self.id)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
 }

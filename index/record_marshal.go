@@ -2,6 +2,7 @@ package index
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/juju/errgo"
 )
 
@@ -9,9 +10,11 @@ type record_presenter_t map[string]interface{}
 
 func (self *record_t) MarshalJSON() ([]byte, error) {
 	var (
-		presenter record_presenter_t
-		err       error
+		// presenter record_presenter_t
+		err error
 	)
+
+	presenter := make(record_presenter_t)
 
 	presenter["id"] = self.Id()
 
@@ -42,8 +45,23 @@ func (self *record_t) UnmarshalJSON(data []byte) error {
 	}
 
 	for key, value := range presenter {
+		if key == "id" {
+			switch value_ := value.(type) {
+			case float64:
+				self.id = Id(value_)
+			case string:
+				_, err := fmt.Sscanf(value_, "%d", &self.id)
+				if err != nil {
+					return errgo.Mask(err)
+				}
+			default:
+				return errgo.Newf("id field of unexpected type")
+			}
+			continue
+		}
 		err = self.Set(key, value)
 		if err != nil {
+			fmt.Printf("error setting %s to %v (%T)\n", key, value, value)
 			return errgo.Mask(err)
 		}
 	}

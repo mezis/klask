@@ -39,7 +39,19 @@ type Index interface {
 	New() Record
 
 	// Find a saved record by identifier
-	Find(id Id) (Record, error)
+	// Find(id Id) (Record, error)
+
+	// True if a record with this `id` has been saved.
+	// Faster then `Find` (does not load record data)
+	HasRecord(id Id) (bool, error)
+
+	// Allocates an id if necessary, and remembers the Id for the record.
+	// Does not save the record fields.
+	// Should be called from Record#Persist.
+	Persist(Record) error
+
+	// Removes a persisted record by id
+	Del(id Id) error
 }
 
 // Allocate and initialize an Index
@@ -158,10 +170,10 @@ func (self *index_t) Save() error {
 
 	for _, field := range self.Fields() {
 		fmt.Println("saving field", field.Name())
-		err = field.Check()
-		if err != nil {
-			return errgo.Mask(err)
-		}
+		// err = field.Check()
+		// if err != nil {
+		// 	return errgo.Mask(err)
+		// }
 
 		err = self.saveField(field)
 		if err != nil {
@@ -221,6 +233,57 @@ func (self *index_t) saveField(field Field) error {
 	return nil
 }
 
+func (self *index_t) Persist(record Record) error {
+	if record.Id() < 0 {
+		return errgo.New("not implemented")
+	}
+
+	conn := self.Conn()
+	defer conn.Close()
+
+	_, err := conn.Do("SADD", self.recordsKey(), record.Id())
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
+}
+
+func (self *index_t) HasRecord(id Id) (bool, error) {
+	conn := self.Conn()
+	defer conn.Close()
+
+	ok, err := redis.Bool(conn.Do("SISMEMBER", self.recordsKey(), id))
+	if err != nil {
+		return false, errgo.Mask(err)
+	}
+	return ok, nil
+}
+
+func (self *index_t) Del(id Id) error {
+	var result error = nil
+
+	for _, field := range self.fields {
+		err := field.Del(id)
+		if err != nil {
+			result = errgo.Mask(err)
+		}
+	}
+
+	conn := self.Conn()
+	defer conn.Close()
+
+	_, err := conn.Do("SREM", self.recordsKey(), id)
+	if err != nil {
+		result = errgo.Mask(err)
+	}
+
+	return result
+}
+
 func (self *index_t) fieldsKey() string {
-	return fmt.Sprintf("fields:%s", self.Name())
+	return fmt.Sprintf("fields:%s", self.name)
+}
+
+func (self *index_t) recordsKey() string {
+	return fmt.Sprintf("records:%s", self.name)
 }

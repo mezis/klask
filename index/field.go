@@ -12,16 +12,28 @@ type Field interface {
 
 	// Verify whether the persisted keys matchs the expected type for this field.
 	// Return nil if everything is sound.
-	Check() error
+	// Check() error
 
-	// Redis key holding the field data
+	// Key to a Redis of keys containing the actual data.
+	// Also a prefix for all data for this field.
 	DataKey() string
 
-	// Destroy persisted field
-	// Destroy() error
+	// Return a normalised value if this value is valid for this field type,
+	// fails if invalid.
+	// For instance passed a float64 to an int field should return the integer
+	// part. Passing a string to an int field should convert the string to an
+	// integer, or error if the string does not contain an integer.
+	CheckValidValue(interface{}) (interface{}, error)
 
-	// Return nil if this value is valid for this field type
-	CheckValidValue(interface{}) error
+	// Persists the given `id` associated to the `value`.
+	// The value type is dependent on the concerte implementation (given by
+	// `#Type`).
+	// Idempotent.
+	Add(id Id, value interface{}) error
+
+	// Removes this persisted `id`, if present. Idempotent.
+	Del(id Id) error
+
 }
 
 type field_t struct {
