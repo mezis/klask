@@ -52,6 +52,9 @@ type Index interface {
 
 	// Removes a persisted record by id
 	Del(id Id) error
+
+	// A Redis set holding the IDs of all known records
+	RecordsKey() string
 }
 
 // Allocate and initialize an Index
@@ -241,7 +244,7 @@ func (self *index_t) Persist(record Record) error {
 	conn := self.Conn()
 	defer conn.Close()
 
-	_, err := conn.Do("SADD", self.recordsKey(), record.Id())
+	_, err := conn.Do("SADD", self.RecordsKey(), record.Id())
 	if err != nil {
 		return errgo.Mask(err)
 	}
@@ -252,7 +255,7 @@ func (self *index_t) HasRecord(id Id) (bool, error) {
 	conn := self.Conn()
 	defer conn.Close()
 
-	ok, err := redis.Bool(conn.Do("SISMEMBER", self.recordsKey(), id))
+	ok, err := redis.Bool(conn.Do("SISMEMBER", self.RecordsKey(), id))
 	if err != nil {
 		return false, errgo.Mask(err)
 	}
@@ -272,7 +275,7 @@ func (self *index_t) Del(id Id) error {
 	conn := self.Conn()
 	defer conn.Close()
 
-	_, err := conn.Do("SREM", self.recordsKey(), id)
+	_, err := conn.Do("SREM", self.RecordsKey(), id)
 	if err != nil {
 		result = errgo.Mask(err)
 	}
@@ -284,6 +287,6 @@ func (self *index_t) fieldsKey() string {
 	return fmt.Sprintf("fields:%s", self.name)
 }
 
-func (self *index_t) recordsKey() string {
+func (self *index_t) RecordsKey() string {
 	return fmt.Sprintf("records:%s", self.name)
 }
