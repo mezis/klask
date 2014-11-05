@@ -34,6 +34,13 @@ type Field interface {
 	// Removes this persisted `id`, if present. Idempotent.
 	Del(id Id) error
 
+	// Stores in the Redis `key` a set of record IDs
+	// matching the operator `op` and operand `val` (which are assumed to be
+	// valid).
+	//
+	// - `sourceKey`: a SET of record IDs be filtered
+	// - `targetKey`: where to store the filtered set of record IDs
+	Filter(op string, val interface{}, sourceKey string, targetKey string) error
 }
 
 type field_t struct {

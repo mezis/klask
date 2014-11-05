@@ -90,7 +90,14 @@ func (self *record_t) Index() Index {
 	return self.idx
 }
 
+// func (self *record_t) IsValid() bool {
+// 	panic("not implemented")
+// 	return false
+// }
 
+// func (self *record_t) Exists() (bool, error) {
+// 	return false, errgo.New("not implemented")
+// }
 
 func (self *record_t) Persist() error {
 	var err error
