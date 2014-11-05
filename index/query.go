@@ -19,7 +19,7 @@ type query_t struct {
 }
 
 // A generic query, which can combine $and, $or, field filters, and a $by
-// clause. They will be run in an unspecified order, expect any $order clause
+// clause. They will be run in an unspecified order, except the optional $by clause
 // which is run last.
 // Represented by a JSON object.
 type query_generic_t struct {
@@ -34,16 +34,23 @@ type query_order_t struct {
 	ascending bool
 }
 
+// A query that contains a list of other queries. Used to parse $and and $or
+// with the same code.
+// Represented with a JSON array.
+type query_sequence_t struct {
+	queries []Query
+}
+
 // A query that merges results.
 // Represented by a JSON array of generic queries, as the value of an $or key.
 type query_or_t struct {
-	queries []Query
+	query_sequence_t
 }
 
 // A query that intersects results, progressively transforming the set of IDs.
 // Represented by a JSON array of generic queries, as the value of an $and key.
 type query_and_t struct {
-	queries []Query
+	query_sequence_t
 }
 
 // A generic field filter, will point to one of the filtering queries
@@ -61,16 +68,21 @@ type query_filter_between_t struct {
 	greater_than interface{}
 }
 
-// A selection filter (returns only values in the list)
-type query_filter_in_t struct {
+// Generic membership query, used to share parsing code between
+// `query_filter_in_t` and `query_filter_not_in_t`.
+type query_filter_membership_t struct {
 	field  Field
 	values []interface{}
 }
 
+// A selection filter (returns only values in the list)
+type query_filter_in_t struct {
+	query_filter_membership_t
+}
+
 // An exclusion filter (returns only values not in the list)
 type query_filter_not_in_t struct {
-	field  Field
-	values []interface{}
+	query_filter_membership_t
 }
 
 func NewQuery(idx Index) Query {
@@ -171,12 +183,21 @@ func (self *query_order_t) parse(idx Index, parsed interface{}) error {
 	return nil
 }
 
-func (self *query_or_t) parse(idx Index, parsed interface{}) error {
-	return errgo.New("not implemented")
-}
-
-func (self *query_and_t) parse(idx Index, parsed interface{}) error {
-	return errgo.New("not implemented")
+func (self *query_sequence_t) parse(idx Index, parsed interface{}) error {
+	switch node := parsed.(type) {
+	case []interface{}:
+		self.queries = make([]Query, 0, len(node))
+		for _, n := range node {
+			q := new(query_generic_t)
+			if err := q.parse(idx, n); err != nil {
+				return errgo.Mask(err)
+			}
+			self.queries = append(self.queries, q)
+		}
+		return nil
+	default:
+		return errgo.Newf("bad subquery of type '%T', expected an array (%v)", node, node)
+	}
 }
 
 func (self *query_field_t) parse(idx Index, name string, parsed interface{}) error {
@@ -198,19 +219,19 @@ func (self *query_field_t) parse(idx Index, name string, parsed interface{}) err
 	node := parsed.(map[string]interface{})
 
 	// figure out the filter type
-	for key, val := range node {
+	for key, _ := range node {
 		switch key {
 		case "$gt", "$lt":
 			q := new(query_filter_between_t)
-			err = q.parse(field, val)
+			err = q.parse(field, node)
 			self.query = q
 		case "$in", "$eq":
 			q := new(query_filter_in_t)
-			err = q.parse(field, val)
+			err = q.parse(field, node)
 			self.query = q
 		case "$ni", "$neq":
 			q := new(query_filter_not_in_t)
-			err = q.parse(field, val)
+			err = q.parse(field, node)
 			self.query = q
 		default:
 			return errgo.Newf("unknown filter type '%s'", key)
@@ -224,16 +245,49 @@ func (self *query_field_t) parse(idx Index, name string, parsed interface{}) err
 	return nil
 }
 
-func (self *query_filter_between_t) parse(field Field, parsed interface{}) error {
-	return errgo.New("not implemented")
+func (self *query_filter_between_t) parse(field Field, parsed map[string]interface{}) error {
+	self.field = field
+
+	// parse
+	for key, val := range parsed {
+		switch key {
+		case "$gt":
+			self.greater_than = val
+		case "$lt":
+			self.less_than = val
+		default:
+			return errgo.Newf("unexpected key '%s' for range filter in '%v'", key, parsed)
+		}
+	}
+
+	// we don't check values, or operator/operand compatibility at this point;
+	// it will be done lazily when applying the filter
+
+	return nil
 }
 
-func (self *query_filter_in_t) parse(field Field, parsed interface{}) error {
-	return errgo.New("not implemented")
-}
+func (self *query_filter_membership_t) parse(field Field, parsed map[string]interface{}) error {
+	self.field = field
 
-func (self *query_filter_not_in_t) parse(field Field, parsed interface{}) error {
-	return errgo.New("not implemented")
+	for key, val := range parsed {
+		switch key {
+		case "$in", "$ni":
+			switch v := val.(type) {
+			case []interface{}:
+				self.values = v
+			default:
+				return errgo.Newf("bad filter, %s requires an array argument (got '%v')", key, v)
+			}
+		case "$eq", "$neq":
+			values := make([]interface{}, 1)
+			values[0] = val
+			self.values = values
+		default:
+			return errgo.Newf("bad filter '%s', "+
+				"membership filters cannot be combined with others (in '%v')", key, parsed)
+		}
+	}
+	return nil
 }
 
 // func (self *query_t) cleanKey(key string) error {
