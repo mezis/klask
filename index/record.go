@@ -6,6 +6,7 @@ import (
 )
 
 type Id int64
+type IdList []Id
 
 type Record interface {
 	json.Marshaler
@@ -25,7 +26,8 @@ type Record interface {
 	Index() Index
 
 	// Checks whether all fields have the correct type of value
-	IsValid() bool
+	// FIXME: not implemented or used.
+	// IsValid() bool
 
 	// Persists the record.
 	Persist() error
@@ -88,14 +90,7 @@ func (self *record_t) Index() Index {
 	return self.idx
 }
 
-func (self *record_t) IsValid() bool {
-	panic("not implemented")
-	return false
-}
 
-func (self *record_t) Exists() (bool, error) {
-	return false, errgo.New("not implemented")
-}
 
 func (self *record_t) Persist() error {
 	for name, field := range self.idx.Fields() {
