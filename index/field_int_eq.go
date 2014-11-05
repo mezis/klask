@@ -110,9 +110,9 @@ func (self *field_int_eq_t) Filter(op string, value interface{}, sourceKey strin
 
 	valueKey := self.valueKey(val)
 	switch op {
-	case OperatorEq:
+	case "eq":
 		err = self.eqFilter(valueKey, sourceKey, targetKey)
-	case OperatorNeq:
+	case "neq":
 		err = self.neqFilter(valueKey, sourceKey, targetKey)
 	default:
 		return errgo.Newf("bad operator '%s'", op)
