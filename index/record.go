@@ -93,15 +93,18 @@ func (self *record_t) Index() Index {
 
 
 func (self *record_t) Persist() error {
+	var err error
+
 	for name, field := range self.idx.Fields() {
 		value, ok := self.attrs[name]
 		if !ok {
 			continue
 		}
-		field.Add(self.id, value)
+		if err = field.Add(self.id, value); err != nil {
+			return errgo.Mask(err)
+		}
 	}
-	err := self.idx.Persist(self)
-	if err != nil {
+	if err = self.idx.Persist(self); err != nil {
 		return errgo.Mask(err)
 	}
 	return nil
@@ -111,8 +114,8 @@ func (self *record_t) Destroy() error {
 	if self.id < 0 {
 		return errgo.Mask(ErrorUnsaved)
 	}
-	err := self.idx.Del(self.id)
-	if err != nil {
+	// TODO: ignore non-connection errors?
+	if err := self.idx.Del(self.id); err != nil {
 		return errgo.Mask(err)
 	}
 	return nil
