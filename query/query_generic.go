@@ -38,7 +38,7 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 			q := new(query_and_t)
 			queries = append(queries, q)
 			err = q.parse(idx, subnode)
-		case "$order":
+		case "$by":
 			q := new(query_order_t)
 			order = q
 			err = q.parse(idx, subnode)
