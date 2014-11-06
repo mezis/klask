@@ -57,3 +57,7 @@ func (self *query_field_t) parse(idx index.Index, name string, parsed interface{
 	}
 	return nil
 }
+
+func (self *query_field_t) Run(idx index.Index, targetKey string) error {
+	return errgo.New("not implemented")
+}

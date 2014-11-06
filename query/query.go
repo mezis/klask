@@ -2,13 +2,13 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/juju/errgo"
 	"github.com/mezis/klask/index"
 )
 
 type Query interface {
-	// Results() []Id
-	// Run(sourceKey string, targetKey string)
+	Run(idx index.Index, targetKey string) error
 }
 
 // the toplevel type of query, wraps a single query
@@ -36,6 +36,8 @@ func (self *query_t) UnmarshalJSON(data []byte) error {
 		return errgo.Mask(err)
 	}
 
+	fmt.Printf("parsed JSON query:\n%+v\n\n%#v\n", parsed, parsed)
+
 	// start parsing!
 	q := new(query_generic_t)
 	err = q.parse(self.idx, parsed)
@@ -45,6 +47,10 @@ func (self *query_t) UnmarshalJSON(data []byte) error {
 
 	self.query = q
 	return nil
+}
+
+func (self *query_t) Run(idx index.Index, targetKey string) error {
+	return errgo.New("not implemented")
 }
 
 // func (self *query_t) cleanKey(key string) error {

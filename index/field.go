@@ -35,8 +35,9 @@ type Field interface {
 	Del(id Id) error
 
 	// Stores in the Redis `key` a set of record IDs
-	// matching the operator `op` and operand `val` (which are assumed to be
-	// valid).
+	// matching the operator `op` and operand `val`.
+	// And error is returned if the operator, operand, or their combination have
+	// unsuppoerted types or values.
 	//
 	// - `sourceKey`: a SET of record IDs be filtered
 	// - `targetKey`: where to store the filtered set of record IDs

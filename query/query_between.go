@@ -32,3 +32,7 @@ func (self *query_filter_between_t) parse(field index.Field, parsed map[string]i
 
 	return nil
 }
+
+func (self *query_filter_between_t) Run(idx index.Index, targetKey string) error {
+	return errgo.New("not implemented")
+}

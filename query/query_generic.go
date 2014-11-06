@@ -62,3 +62,7 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 	self.queries = queries
 	return nil
 }
+
+func (self *query_generic_t) Run(idx index.Index, targetKey string) error {
+	return errgo.New("not implemented")
+}

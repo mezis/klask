@@ -23,14 +23,18 @@ func (self *query_order_t) parse(idx index.Index, parsed interface{}) error {
 		if matches == nil {
 			return errgo.Newf("bad order '%s', expected to match /[+-].*/", val)
 		}
-		field, err := idx.Field(matches[1])
+		field, err := idx.Field(matches[2])
 		if err != nil {
 			return errgo.Mask(err)
 		}
 		self.field = field
-		self.ascending = (matches[0] != "-")
+		self.ascending = (matches[1] != "-")
 	default:
 		return errgo.Newf("bad order '%v' (%T), expected a string", val, val)
 	}
 	return nil
+}
+
+func (self *query_order_t) Run(idx index.Index, targetKey string) error {
+	return errgo.New("not implemented")
 }
