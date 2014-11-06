@@ -3,6 +3,7 @@ package query
 import (
 	"github.com/juju/errgo"
 	"github.com/mezis/klask/index"
+	"strings"
 )
 
 // A generic query, which can combine $and, $or, field filters, and a $by
@@ -29,19 +30,21 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 	}
 
 	for key, subnode := range node {
-		switch key {
-		case "$or":
+		switch {
+		case key == "$or":
 			q := new(query_or_t)
 			queries = append(queries, q)
 			err = q.parse(idx, subnode)
-		case "$and":
+		case key == "$and":
 			q := new(query_and_t)
 			queries = append(queries, q)
 			err = q.parse(idx, subnode)
-		case "$by":
+		case key == "$by":
 			q := new(query_order_t)
 			order = q
 			err = q.parse(idx, subnode)
+		case strings.HasPrefix(key, "$"):
+			err = errgo.Newf("unknown subquery type '%s'", key)
 		default:
 			q := new(query_field_t)
 			queries = append(queries, q)
