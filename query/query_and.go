@@ -29,5 +29,20 @@ func (self *query_and_t) Run(idx index.Index, targetKey string) error {
 			return errgo.Mask(err)
 		}
 	}
+
+	conn := idx.Conn()
+	defer conn.Close()
+
+	keys := make([]interface{}, len(tempkeys)+1)
+	keys[0] = targetKey
+	for k, key := range tempkeys {
+		keys[k+1] = key.Get()
+	}
+
+	_, err := conn.Do("SINTERSTORE", keys...)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+
 	return nil
 }
