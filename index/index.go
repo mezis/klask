@@ -55,8 +55,6 @@ type Index interface {
 
 	// A Redis set holding the IDs of all known records
 	RecordsKey() string
-
-	NewTempKey() (Tempkey, error)
 }
 
 // Allocate and initialize an Index

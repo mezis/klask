@@ -3,6 +3,7 @@ package query
 import (
 	"github.com/juju/errgo"
 	"github.com/mezis/klask/index"
+	"github.com/mezis/klask/util/tempkey"
 )
 
 // A query that intersects results, progressively transforming the set of IDs.
@@ -12,34 +13,26 @@ type query_and_t struct {
 }
 
 func (self *query_and_t) Run(idx index.Index, targetKey string) error {
-	tempkeys := make([]index.Tempkey, len(self.queries))
-
-	for k, _ := range tempkeys {
-		key, err := idx.NewTempKey()
-		if err != nil {
-			return errgo.Mask(err)
-		}
-		tempkeys[k] = key
-		defer key.Clear()
-	}
-
-	for k, query := range self.queries {
-		err := query.Run(idx, tempkeys[k].Get())
-		if err != nil {
-			return errgo.Mask(err)
-		}
-	}
-
 	conn := idx.Conn()
 	defer conn.Close()
+
+	tempkeys, err := tempkey.NewSlice(conn, len(self.queries))
+	defer tempkeys.Clear()
+
+	for k, query := range self.queries {
+		err := query.Run(idx, tempkeys[k].Name())
+		if err != nil {
+			return errgo.Mask(err)
+		}
+	}
 
 	keys := make([]interface{}, len(tempkeys)+1)
 	keys[0] = targetKey
 	for k, key := range tempkeys {
-		keys[k+1] = key.Get()
+		keys[k+1] = key.Name()
 	}
 
-	_, err := conn.Do("SINTERSTORE", keys...)
+	_, err = conn.Do("SINTERSTORE", keys...)
 	if err != nil {
 		return errgo.Mask(err)
 	}
