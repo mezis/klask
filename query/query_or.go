@@ -3,6 +3,7 @@ package query
 import (
 	"github.com/juju/errgo"
 	"github.com/mezis/klask/index"
+	"github.com/mezis/klask/util/tempkey"
 )
 
 // A query that merges results.
@@ -12,5 +13,9 @@ type query_or_t struct {
 }
 
 func (self *query_or_t) Run(idx index.Index, targetKey string) error {
-	return errgo.New("not implemented")
+	err := self.query_sequence_t.Run(idx, "ZUNIONSTORE", targetKey)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	return nil
 }

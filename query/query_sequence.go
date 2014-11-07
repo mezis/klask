@@ -3,6 +3,7 @@ package query
 import (
 	"github.com/juju/errgo"
 	"github.com/mezis/klask/index"
+	"github.com/mezis/klask/util/tempkey"
 )
 
 // A query that contains a list of other queries. Used to parse $and and $or
@@ -27,4 +28,36 @@ func (self *query_sequence_t) parse(idx index.Index, parsed interface{}) error {
 	default:
 		return errgo.Newf("bad subquery of type '%T', expected an array (%v)", node, node)
 	}
+}
+
+// Operation should be ZINTERSTORE or ZUNIONSTORE
+func (self *query_sequence_t) Run(idx index.Index, operation string, targetKey string) error {
+	conn := idx.Conn()
+	defer conn.Close()
+
+	N := len(self.queries)
+
+	tempkeys, err := tempkey.NewSlice(conn, N)
+	defer tempkeys.Clear()
+
+	for k, query := range self.queries {
+		err := query.Run(idx, tempkeys[k].Name())
+		if err != nil {
+			return errgo.Mask(err)
+		}
+	}
+
+	keys := make([]interface{}, N+2)
+	keys[0] = targetKey
+	keys[1] = N
+	for k, key := range tempkeys {
+		keys[k+2] = key.Name()
+	}
+
+	_, err = conn.Do(operation, keys...)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+
+	return nil
 }
