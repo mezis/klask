@@ -16,10 +16,12 @@ type query_generic_t struct {
 
 func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 	var (
-		err     error = nil
-		order   Query = nil
-		queries       = make([]Query, 0)
-		node    map[string]interface{}
+		err     error                  = nil
+		order   *query_order_t         = nil
+		limit   uint                   = 0
+		offset  uint                   = 0
+		queries []Query                = make([]Query, 0)
+		node    map[string]interface{} = nil
 	)
 
 	switch n := parsed.(type) {
@@ -40,9 +42,12 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 			queries = append(queries, q)
 			err = q.parse(idx, subnode)
 		case key == "$by":
-			q := new(query_order_t)
-			order = q
-			err = q.parse(idx, subnode)
+			order := new(query_order_t)
+			err = order.parse(idx, subnode)
+		case key == "$limit":
+			limit, err = self.parseInt(subnode)
+		case key == "$offset":
+			offset, err = self.parseInt(subnode)
 		case strings.HasPrefix(key, "$"):
 			err = errgo.Newf("unknown subquery type '%s'", key)
 		default:
@@ -57,10 +62,28 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 
 	// the order query, if any, should be last
 	if order != nil {
+		order.limit = limit
+		order.offset = offset
 		queries = append(queries, order)
 	}
+	if order == nil && (limit != 0 || offset != 0) {
+		return errgo.New("cannot have $limit or $offset without $by")
+	}
+
 	self.queries = queries
 	return nil
+}
+
+func (self *query_generic_t) parseInt(val interface{}) (uint, error) {
+	switch v := val.(type) {
+	case float64:
+		if v < 0 {
+			return 0, errgo.Newf("unexpected negative value '%v'", v)
+		}
+		return uint(v), nil
+	default:
+		return 0, errgo.Newf("expected positive int, got %T '%v'", v, v)
+	}
 }
 
 func (self *query_generic_t) Run(idx index.Index, targetKey string) error {

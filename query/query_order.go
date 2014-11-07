@@ -12,6 +12,8 @@ import (
 type query_order_t struct {
 	field     index.Field
 	ascending bool
+	limit     uint
+	offset    uint
 }
 
 var gOrderRE = regexp.MustCompile("^([+-]?)(.*)$")
