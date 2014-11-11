@@ -2,18 +2,18 @@ package query
 
 import (
 	"github.com/juju/errgo"
-	"github.com/mezis/klask/index"
+	// "github.com/mezis/klask/index"
 )
 
 // A comparison filter (less than, greater than, or both)
 type query_filter_between_t struct {
-	field        index.Field
+	name         string
 	less_than    interface{}
 	greater_than interface{}
 }
 
-func (self *query_filter_between_t) parse(field index.Field, parsed map[string]interface{}) error {
-	self.field = field
+func (self *query_filter_between_t) parse(name string, parsed map[string]interface{}) error {
+	self.name = name
 
 	// parse
 	for key, val := range parsed {
@@ -27,12 +27,12 @@ func (self *query_filter_between_t) parse(field index.Field, parsed map[string]i
 		}
 	}
 
-	// we don't check values, or operator/operand compatibility at this point;
+	// we don't check values, field names, or operator/operand compatibility at this point;
 	// it will be done lazily when applying the filter
 
 	return nil
 }
 
-func (self *query_filter_between_t) Run(idx index.Index, targetKey string) error {
-	return errgo.New("not implemented")
+func (self *query_filter_between_t) Run(records string, ctx Context) (string, error) {
+	return "", errgo.New("not implemented")
 }

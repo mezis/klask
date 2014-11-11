@@ -2,7 +2,6 @@ package query
 
 import (
 	"github.com/juju/errgo"
-	"github.com/mezis/klask/index"
 )
 
 // A query that intersects results, progressively transforming the set of IDs.
@@ -11,10 +10,23 @@ type query_and_t struct {
 	query_sequence_t
 }
 
-func (self *query_and_t) Run(idx index.Index, targetKey string) error {
-	err := self.query_sequence_t.Run(idx, "ZINTERSTORE", targetKey)
-	if err != nil {
-		return errgo.Mask(err)
+func (self *query_and_t) Run(records string, ctx Context) (string, error) {
+	conn := ctx.Conn()
+	defer conn.Close()
+
+	input := records
+	for _, q := range self.queries {
+		output, err := q.Run(input, ctx)
+		if err != nil {
+			return "", errgo.Mask(err)
+		}
+
+		if input != records {
+			ctx.Keys().Release(input)
+		}
+		input = output
 	}
-	return nil
+
+	// after a run `input` contains either `records` or the last output
+	return input, nil
 }

@@ -14,7 +14,7 @@ func OnRecordsIndex(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	idx := loadIndex(params["name"])
 
-	query := query.NewQuery(idx)
+	query := query.New(idx)
 	requestJson(req, &query)
 
 	// ids, err := query.Run(0, 3600)

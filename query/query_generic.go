@@ -2,7 +2,7 @@ package query
 
 import (
 	"github.com/juju/errgo"
-	"github.com/mezis/klask/index"
+	// "github.com/mezis/klask/index"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ type query_generic_t struct {
 	queries []Query
 }
 
-func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
+func (self *query_generic_t) parse(parsed interface{}) error {
 	var (
 		err     error                  = nil
 		order   *query_order_t         = nil
@@ -36,14 +36,14 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 		case key == "$or":
 			q := new(query_or_t)
 			queries = append(queries, q)
-			err = q.parse(idx, subnode)
+			err = q.parse(subnode)
 		case key == "$and":
 			q := new(query_and_t)
 			queries = append(queries, q)
-			err = q.parse(idx, subnode)
+			err = q.parse(subnode)
 		case key == "$by":
 			order := new(query_order_t)
-			err = order.parse(idx, subnode)
+			err = order.parse(subnode)
 		case key == "$limit":
 			limit, err = self.parseInt(subnode)
 		case key == "$offset":
@@ -53,7 +53,7 @@ func (self *query_generic_t) parse(idx index.Index, parsed interface{}) error {
 		default:
 			q := new(query_field_t)
 			queries = append(queries, q)
-			err = q.parse(idx, key, subnode)
+			err = q.parse(key, subnode)
 		}
 		if err != nil {
 			return errgo.Mask(err)
@@ -86,6 +86,6 @@ func (self *query_generic_t) parseInt(val interface{}) (uint, error) {
 	}
 }
 
-func (self *query_generic_t) Run(idx index.Index, targetKey string) error {
-	return errgo.New("not implemented")
+func (self *query_generic_t) Run(records string, ctx Context) (string, error) {
+	return "", errgo.New("not implemented")
 }

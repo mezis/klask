@@ -8,29 +8,26 @@ import (
 )
 
 type Query interface {
-	Run(idx index.Index, targetKey string) error
+	// `records` is a ZSET key, containing subset of records IDs.
+	// The key returned should contain a subset of `sourceKey`.
+	// Pass `nil` as a context to the top-level query.
+	Run(records string, context Context) (string, error)
 }
 
 // the toplevel type of query, wraps a single query
 type query_t struct {
-	idx   index.Index
 	query Query
 }
 
-func NewQuery(idx index.Index) Query {
+func New(idx index.Index) Query {
 	q := new(query_t)
-	q.idx = idx
 	return q
 }
 
 func (self *query_t) UnmarshalJSON(data []byte) error {
 	var parsed interface{}
 
-	if self.idx == nil {
-		return errgo.New("need an index to unmarshal a query")
-	}
-
-	// parse the syntax tree
+	// lexical parsing: get a structure tree form JSON
 	err := json.Unmarshal(data, &parsed)
 	if err != nil {
 		return errgo.Mask(err)
@@ -38,19 +35,25 @@ func (self *query_t) UnmarshalJSON(data []byte) error {
 
 	fmt.Printf("parsed JSON query:\n%+v\n\n%#v\n", parsed, parsed)
 
-	// start parsing!
+	// syntactic parsing: build a tree of queries
 	q := new(query_generic_t)
-	err = q.parse(self.idx, parsed)
+	err = q.parse(parsed)
 	if err != nil {
 		return errgo.Mask(err)
 	}
+
+	fmt.Printf("query AST:\n%+v\n\n%#v\n", q, q)
 
 	self.query = q
 	return nil
 }
 
-func (self *query_t) Run(idx index.Index, targetKey string) error {
-	return errgo.New("not implemented")
+func (self *query_t) Run(records string, context Context) (string, error) {
+	results, err := self.query.Run(records, context)
+	if err != nil {
+		return "", errgo.Mask(err)
+	}
+	return results, nil
 }
 
 // func (self *query_t) cleanKey(key string) error {

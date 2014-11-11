@@ -2,18 +2,18 @@ package query
 
 import (
 	"github.com/juju/errgo"
-	"github.com/mezis/klask/index"
+	// "github.com/mezis/klask/index"
 )
 
 // Generic membership query, used to share parsing code between
 // `query_filter_in_t` and `query_filter_not_in_t`.
 type query_filter_membership_t struct {
-	field  index.Field
+	name   string
 	values []interface{}
 }
 
-func (self *query_filter_membership_t) parse(field index.Field, parsed map[string]interface{}) error {
-	self.field = field
+func (self *query_filter_membership_t) parse(name string, parsed map[string]interface{}) error {
+	self.name = name
 
 	for key, val := range parsed {
 		switch key {
