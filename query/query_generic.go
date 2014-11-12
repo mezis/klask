@@ -11,7 +11,9 @@ import (
 // which is run last.
 // Represented by a JSON object.
 type query_generic_t struct {
-	queries []Query
+	// queries []Query
+	queries *query_and_t
+	order   *query_order_t
 }
 
 func (self *query_generic_t) parse(parsed interface{}) error {
@@ -60,17 +62,23 @@ func (self *query_generic_t) parse(parsed interface{}) error {
 		}
 	}
 
-	// the order query, if any, should be last
-	if order != nil {
-		order.limit = limit
-		order.offset = offset
-		queries = append(queries, order)
+	// create the and query
+	if len(queries) > 0 {
+		q := new(query_and_t)
+		q.queries = queries
+		self.queries = q
 	}
+
+	// the order query, if any, should be last
 	if order == nil && (limit != 0 || offset != 0) {
 		return errgo.New("cannot have $limit or $offset without $by")
 	}
+	if order != nil {
+		order.limit = limit
+		order.offset = offset
+		self.order = order
+	}
 
-	self.queries = queries
 	return nil
 }
 
@@ -87,5 +95,29 @@ func (self *query_generic_t) parseInt(val interface{}) (uint, error) {
 }
 
 func (self *query_generic_t) Run(records string, ctx Context) (string, error) {
-	return "", errgo.New("not implemented")
+	var (
+		err      error  = nil
+		unsorted string = ""
+		sorted   string = ""
+	)
+
+	if self.queries != nil {
+		unsorted, err = self.queries.Run(records, ctx)
+		if err != nil {
+			return "", errgo.Mask(err)
+		}
+	} else {
+		unsorted = records
+	}
+
+	if self.order != nil {
+		sorted, err = self.order.Run(unsorted, ctx)
+		if err != nil {
+			return "", errgo.Mask(err)
+		}
+	} else {
+		sorted = unsorted
+	}
+
+	return sorted, nil
 }

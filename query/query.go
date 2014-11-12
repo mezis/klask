@@ -27,7 +27,7 @@ func New(idx index.Index) Query {
 func (self *query_t) UnmarshalJSON(data []byte) error {
 	var parsed interface{}
 
-	// lexical parsing: get a structure tree form JSON
+	// "syntactic" parsing: get a structure tree form JSON
 	err := json.Unmarshal(data, &parsed)
 	if err != nil {
 		return errgo.Mask(err)
@@ -35,7 +35,7 @@ func (self *query_t) UnmarshalJSON(data []byte) error {
 
 	fmt.Printf("parsed JSON query:\n%+v\n\n%#v\n", parsed, parsed)
 
-	// syntactic parsing: build a tree of queries
+	// "semantic" parsing: build a tree of queries
 	q := new(query_generic_t)
 	err = q.parse(parsed)
 	if err != nil {

@@ -20,7 +20,7 @@ func (self *query_and_t) Run(records string, ctx Context) (string, error) {
 		if err != nil {
 			return "", errgo.Mask(err)
 		}
-
+		// release temporary keys early since we can
 		if input != records {
 			ctx.Keys().Release(input)
 		}
