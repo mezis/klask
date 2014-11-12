@@ -12,11 +12,12 @@ type Keys interface {
 	// Return the name of an empty key
 	Get() (string, error)
 
-	// Release a key obtained by Get()
-	// It is not an error if the key was never obtained, or was released
+	// Release one or more keys obtained by Get().
+	// All arguments should be strings.
+	// It is not an error if a key was never obtained, or was released
 	// previously.
-	// Connection errors are still reported.
-	Release(string) error
+	// Connection and argument errors are still reported.
+	Release(...interface{}) error
 
 	// Release all keys created with Get()
 	// It is an error if any removal fails, although each key will be attempted.
@@ -30,12 +31,16 @@ type keys_t struct {
 	keys    map[string]bool
 }
 
+//
+
 func New(fact ConnFactory) Keys {
 	rv := new(keys_t)
 	rv.factory = fact
 	rv.keys = make(map[string]bool)
 	return rv
 }
+
+//
 
 func (self *keys_t) Get() (string, error) {
 	conn := self.factory()
@@ -51,22 +56,38 @@ func (self *keys_t) Get() (string, error) {
 	return key, nil
 }
 
-func (self *keys_t) Release(key string) error {
-	if _, ok := self.keys[key]; !ok {
-		return nil
+//
+
+func (self *keys_t) Release(keys ...interface{}) error {
+	to_delete := make([]interface{}, 0, len(keys))
+
+	for _, key := range keys {
+		switch k := key.(type) {
+		case string:
+			if _, ok := self.keys[k]; !ok {
+				continue
+			}
+			to_delete = append(to_delete, k)
+		default:
+			return errgo.New("arguments should be strings")
+		}
 	}
 
 	conn := self.factory()
 	defer conn.Close()
 
-	_, err := conn.Do("DEL", key)
+	_, err := conn.Do("DEL", to_delete...)
 	if err != nil {
 		return errgo.Mask(err)
 	}
-	delete(self.keys, key)
+	for _, key := range to_delete {
+		delete(self.keys, key.(string))
+	}
 
 	return nil
 }
+
+//
 
 func (self *keys_t) Clear() error {
 	var err error = nil
@@ -81,39 +102,3 @@ func (self *keys_t) Clear() error {
 	}
 	return err
 }
-
-// func NewSlice(conn redis.Conn, size int) (Slice, error) {
-// 	slice := make([]Key, size)
-
-// 	for k, _ := range slice {
-// 		key, err := New(conn)
-// 		if err != nil {
-// 			return nil, errgo.Mask(err)
-// 		}
-// 		slice[k] = key
-// 	}
-
-// 	return slice, nil
-// }
-
-// func (self *key_t) Name() string {
-// 	return self.key
-// }
-
-// func (self *key_t) Clear() error {
-// 	_, err := self.conn.Do("DEL", self.key)
-// 	if err != nil {
-// 		return errgo.Mask(err)
-// 	}
-// 	return nil
-// }
-
-// func (self Slice) Clear() error {
-// 	var err error = nil
-// 	for _, key := range self {
-// 		if e := key.Clear(); e != nil {
-// 			err = errgo.Mask(e)
-// 		}
-// 	}
-// 	return err
-// }
